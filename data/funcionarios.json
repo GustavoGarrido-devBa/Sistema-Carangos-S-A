@@ -1,0 +1,24 @@
+[
+  {
+    "nome": "Teste",
+    "cpf": "09128387412",
+    "rg": "129783695334",
+    "endereco": "Rua Teste",
+    "telefone": "719928303436",
+    "qtd_filhos": 8,
+    "cargo": "Auxiliar de Estoque",
+    "valor_hora": 7.0,
+    "data_cadastro": "07/12/2025 14:59:54"
+  },
+  {
+    "nome": "Admin",
+    "cpf": "12387109824",
+    "rg": "12083798756-",
+    "endereco": "Rua teste 2",
+    "telefone": "128703928",
+    "qtd_filhos": 11,
+    "cargo": "Gerente Financeiro",
+    "valor_hora": 15.0,
+    "data_cadastro": "07/12/2025 15:01:12"
+  }
+]

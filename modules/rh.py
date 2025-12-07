@@ -186,7 +186,7 @@ def cadastrar_funcionario(filepath: str = "data/funcionarios.json"):
 
     try:
         salvar_funcionario(cadastro_completo, filepath)
-        print(f"\n✨ Funcionário '{nome}' cadastrado com sucesso!")
+        print(f"\nFuncionário '{nome}' cadastrado com sucesso!")
     except Exception as e:
         print(f"Erro ao salvar o cadastro: {e}")
         pass 
@@ -248,7 +248,7 @@ def editar_funcionarios(filepath: str = "data/funcionarios.json"):
     editar = cadastro[indice_selecionado]
     nome_atual = editar.get('nome')
 
-    print(f"\n✅ Selecionado para edição: **{nome_atual}** (CPF: {editar.get('cpf')})")
+    print(f"\n✅ Selecionado para edição: {nome_atual} (CPF: {editar.get('cpf')})")
 
     #Aqui começa a edição dos campos: pode ser editado o nome, endereço e telefone.
     print("\nQuais campos deseja alterar? (Deixe em branco para manter o valor atual)")
@@ -264,6 +264,7 @@ def editar_funcionarios(filepath: str = "data/funcionarios.json"):
     novo_telefone = input(f"Novo Telefone (Atual: {editar['telefone']}): ").strip()
     if novo_telefone:
         editar['telefone'] = novo_telefone
+        
     print("\nPara alterar o cargo ou setor, é necessário apagar o cadastro atual e refazer o cadastro com as novas informações.")
 
     try:
@@ -325,8 +326,13 @@ def calcular_horas_extras(horas_extras, valor_hora, cargo):
     Calcula valor das horas extras.
     Gerentes e Diretores não recebem hora extra.
     """
+    cargo_lower = cargo.lower()
     cargos_sem_extra = ["gerente", "diretor"]
-    if cargo.lower() in cargos_sem_extra:
+    
+    # Verifica se algum dos cargos sem extra está CONTIDO no cargo
+    tem_restricao = any(restricao in cargo_lower for restricao in cargos_sem_extra)
+    
+    if tem_restricao:
         return 0.0
     
     # Adicional de 50% na hora extra (padrão CLT simples para o exercício)
@@ -356,12 +362,21 @@ def calcular_liquido(salario_bruto, irpf):
     """
     return salario_bruto - irpf
 
+def obter_setor_funcionario(cargo: str) -> str:
+    """
+    Identifica o setor do funcionário baseado no cargo.
+    Retorna o setor ou None se não encontrado.
+    """
+    for setor, cargos_dict in SETORES_DA_EMPRESA.items():
+        if cargo in cargos_dict:
+            return setor
+    return None
+
 def gerar_folha_pagamento():
     """
-    Gera relatório final com salários líquidos e IRPF.
+    Gera relatório de folha de pagamento com seleção por setor e funcionário.
+    Permite selecionar qual funcionário calcular a folha de pagamento.
     """
-    print("\n--- Folha de Pagamento ---")
-    
     # Carregar funcionários cadastrados
     funcionarios = carregar_todos_funcionarios()
     
@@ -369,26 +384,198 @@ def gerar_folha_pagamento():
         print("Nenhum funcionário cadastrado para gerar folha.")
         return
     
-    # Ordenar por nome
-    funcionarios_ordenados = sorted(funcionarios, key=lambda x: x["nome"])
+    # Organizar funcionários por setor
+    funcionarios_por_setor = {}
+    for f in funcionarios:
+        setor = obter_setor_funcionario(f["cargo"])
+        if setor:
+            if setor not in funcionarios_por_setor:
+                funcionarios_por_setor[setor] = []
+            funcionarios_por_setor[setor].append(f)
     
-    for f in funcionarios_ordenados:
-        # Simulação de horas para o relatório (em um sistema real, viria de input ou ponto)
-        horas_trab = float(input("Informe a quantidade de horas trabalhadas (media - 220h mensais): ")) # Mensal padrão
-        horas_ext = float(input("Informe a quantidade de horas extras: "))  # Exemplo
+    if not funcionarios_por_setor:
+        print("Nenhum funcionário com setor válido encontrado.")
+        return
+    
+    # Menu de seleção de setor
+    setores_lista = sorted(funcionarios_por_setor.keys())
+    
+    print("\n" + "=" * 70)
+    print("SELEÇÃO DE SETOR PARA FOLHA DE PAGAMENTO")
+    print("=" * 70)
+    
+    for i, setor in enumerate(setores_lista, start=1):
+        qtd_func = len(funcionarios_por_setor[setor])
+        print(f"{i}. {setor} ({qtd_func} funcionário(s))")
+    print(f"{len(setores_lista) + 1}. Gerar folha de TODOS os setores")
+    print("0. Cancelar")
+    print("=" * 70)
+    
+    while True:
+        try:
+            escolha_setor = input("Selecione o setor (ou 0 para cancelar): ").strip()
+            escolha_setor_idx = int(escolha_setor)
+            
+            if escolha_setor_idx == 0:
+                print("Operação cancelada.")
+                return
+            elif escolha_setor_idx == len(setores_lista) + 1:
+                # Gerar para todos os setores
+                gerar_folha_todos_setores(funcionarios_por_setor, setores_lista)
+                return
+            elif 1 <= escolha_setor_idx <= len(setores_lista):
+                setor_selecionado = setores_lista[escolha_setor_idx - 1]
+                gerar_folha_setor(setor_selecionado, funcionarios_por_setor[setor_selecionado])
+                return
+            else:
+                print("Opção inválida. Tente novamente.")
+        except ValueError:
+            print("Entrada inválida. Digite um número.")
+
+def gerar_folha_setor(setor: str, funcionarios_setor: list):
+    """
+    Gera a folha de pagamento para um setor específico.
+    Permite selecionar qual funcionário calcular.
+    """
+    print("\n" + "=" * 70)
+    print(f"FOLHA DE PAGAMENTO - SETOR: {setor}")
+    print("=" * 70)
+    
+    # Ordenar por nome
+    funcionarios_ordenados = sorted(funcionarios_setor, key=lambda x: x["nome"])
+    
+    # Menu de seleção de funcionário
+    print("\nSELECIONE UM FUNCIONÁRIO:")
+    print("-" * 70)
+    
+    for i, f in enumerate(funcionarios_ordenados, start=1):
+        print(f"{i}. {f['nome']:40} ({f['cargo']})")
+    
+    print("0. Voltar")
+    print("-" * 70)
+    
+    while True:
+        try:
+            escolha_func = input("Selecione o funcionário: ").strip()
+            escolha_func_idx = int(escolha_func)
+            
+            if escolha_func_idx == 0:
+                return
+            elif 1 <= escolha_func_idx <= len(funcionarios_ordenados):
+                funcionario_selecionado = funcionarios_ordenados[escolha_func_idx - 1]
+                calcular_folha_funcionario(funcionario_selecionado)
+                return
+            else:
+                print("Opção inválida. Tente novamente.")
+        except ValueError:
+            print("Entrada inválida. Digite um número.")
+
+def gerar_folha_todos_setores(funcionarios_por_setor: dict, setores_lista: list):
+    """
+    Gera a folha de pagamento para todos os setores.
+    """
+    print("\n" + "=" * 70)
+    print("FOLHA DE PAGAMENTO - TODOS OS SETORES")
+    print("=" * 70)
+    
+    total_geral_bruto = 0.0
+    total_geral_irpf = 0.0
+    total_geral_liquido = 0.0
+    
+    for setor in setores_lista:
+        funcionarios_ordenados = sorted(funcionarios_por_setor[setor], key=lambda x: x["nome"])
         
-        bruto = calcular_salario_bruto(horas_trab, f["valor_hora"])
-        extra = calcular_horas_extras(horas_ext, f["valor_hora"], f["cargo"])
-        total_bruto = bruto + extra
+        print("\n" + "─" * 70)
+        print(f"SETOR: {setor}")
+        print("─" * 70)
         
-        irpf = calcular_irpf(total_bruto)
-        liquido = calcular_liquido(total_bruto, irpf)
-        
-        paga_ir = "Sim" if irpf > 0 else "Não"
-        
-        print(f"Nome: {f['nome']}")
-        print(f"  Cargo: {f['cargo']}")
-        print(f"  Salário Bruto: R$ {total_bruto:.2f}")
-        print(f"  IRPF: R$ {irpf:.2f} ({paga_ir})")
-        print(f"  Salário Líquido: R$ {liquido:.2f}")
-        print("-" * 30)
+        for f in funcionarios_ordenados:
+            # Input de horas
+            print(f"\n[{f['nome']}]")
+            try:
+                horas_trab = float(input(f"  Horas trabalhadas (padrão 220h): ") or "220")
+                horas_ext = float(input(f"  Horas extras: ") or "0")
+            except ValueError:
+                horas_trab = 220.0
+                horas_ext = 0.0
+            
+            # Cálculos
+            bruto = calcular_salario_bruto(horas_trab, f["valor_hora"])
+            extra = calcular_horas_extras(horas_ext, f["valor_hora"], f["cargo"])
+            total_bruto = bruto + extra
+            irpf = calcular_irpf(total_bruto)
+            liquido = calcular_liquido(total_bruto, irpf)
+            
+            # Acumular totais
+            total_geral_bruto += total_bruto
+            total_geral_irpf += irpf
+            total_geral_liquido += liquido
+            
+            # Exibir
+            paga_ir = "Sim" if irpf > 0 else "Não"
+            print(f"  Cargo: {f['cargo']:35} | Valor/hora: R$ {f['valor_hora']:7.2f}")
+            print(f"  Salário Base ({horas_trab:6.0f}h): R$ {bruto:10.2f}")
+            print(f"  Horas Extras ({horas_ext:6.0f}h + 50%): R$ {extra:10.2f}")
+            print(f"  ├─ Total Bruto: R$ {total_bruto:10.2f}")
+            print(f"  ├─ IRPF: R$ {irpf:10.2f} ({paga_ir})")
+            print(f"  └─ Líquido: R$ {liquido:10.2f}")
+    
+    # Resumo geral
+    print("\n" + "=" * 70)
+    print("RESUMO GERAL - TODOS OS SETORES")
+    print("=" * 70)
+    print(f"Total Bruto Geral: R$ {total_geral_bruto:10.2f}")
+    print(f"Total IRPF Geral:  R$ {total_geral_irpf:10.2f}")
+    print(f"Total Líquido Geral: R$ {total_geral_liquido:10.2f}")
+    print("=" * 70)
+
+def calcular_folha_funcionario(funcionario: dict):
+    """
+    Calcula e exibe a folha de pagamento de um funcionário específico.
+    """
+    print("\n" + "=" * 70)
+    print(f"FOLHA DE PAGAMENTO - {funcionario['nome'].upper()}")
+    print("=" * 70)
+    
+    # Dados pessoais
+    print("\n[DADOS PESSOAIS]")
+    print(f"Nome: {funcionario['nome']}")
+    print(f"CPF: {funcionario['cpf']}")
+    print(f"RG: {funcionario['rg']}")
+    print(f"Endereço: {funcionario['endereco']}")
+    print(f"Telefone: {funcionario['telefone']}")
+    
+    # Input de horas
+    print("\n[INFORMAÇÕES DE HORAS]")
+    try:
+        horas_trab = float(input("Horas trabalhadas (padrão 220h): ") or "220")
+        horas_ext = float(input("Horas extras: ") or "0")
+    except ValueError:
+        horas_trab = 220.0
+        horas_ext = 0.0
+    
+    # Cálculos
+    print("\n[CÁLCULOS]")
+    bruto = calcular_salario_bruto(horas_trab, funcionario["valor_hora"])
+    extra = calcular_horas_extras(horas_ext, funcionario["valor_hora"], funcionario["cargo"])
+    total_bruto = bruto + extra
+    irpf = calcular_irpf(total_bruto)
+    liquido = calcular_liquido(total_bruto, irpf)
+    
+    paga_ir = "Sim" if irpf > 0 else "Não"
+    
+    # Exibição formatada
+    print(f"Cargo: {funcionario['cargo']}")
+    print(f"Valor/hora: R$ {funcionario['valor_hora']:.2f}")
+    print(f"Quantidade de filhos: {funcionario['qtd_filhos']}")
+    
+    print("\n[FOLHA DE PAGAMENTO]")
+    print(f"Salário Base ({horas_trab:.0f}h × R${funcionario['valor_hora']:.2f}): R$ {bruto:10.2f}")
+    print(f"Horas Extras ({horas_ext:.0f}h + 50%): R$ {extra:10.2f}")
+    print("-" * 70)
+    print(f"Total Bruto: R$ {total_bruto:10.2f}")
+    print(f"IRPF (-): R$ {irpf:10.2f}")
+    print(f"Paga IRPF: {paga_ir}")
+    print("=" * 70)
+    print(f"SALÁRIO LÍQUIDO: R$ {liquido:10.2f}")
+    print("=" * 70)

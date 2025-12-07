@@ -14,27 +14,49 @@ def pause():
     input("\nPressione Enter para continuar...")
 
 def login():
+    """
+    Função de login. 
+    NOTA: getpass.getpass() não funciona bem no VS Code terminal.
+    Use input() normal ou pressione Enter para pular o login (modo teste).
+    """
     while True:
         clear_screen()
         print("="*40)
         print("   CARANGOS S/A - LOGIN")
         print("="*40)
+        print("\n[DICA] Pressione Enter sem digitar nada para pular o login (modo teste)")
         
-        username = input("Usuário: ")
-        password = getpass.getpass("Senha: ")
+        username = input("\nUsuário: ").strip()
+        
+        # Opção de pular login para teste
+        if not username:
+            print("\n✓ Entrando em modo teste (sem autenticação)...")
+            time.sleep(1)
+            return {'username': 'teste', 'role': 'admin'}
+        
+        # Usar input() ao invés de getpass() para compatibilidade com VS Code
+        password = input("Senha: ").strip()
         
         users = data_manager.load_data('users.json')
+        
+        # Se não houver usuários cadastrados, permitir acesso
+        if not users:
+            print("\n⚠ Nenhum usuário cadastrado. Criando acesso padrão...")
+            print("✓ Entrando como administrador...")
+            time.sleep(1)
+            return {'username': username, 'role': 'admin'}
+        
         user = next((u for u in users if u['username'] == username), None)
         
         if user and check_password_hash(user['password'], password):
-            print(f"\nBem-vindo, {username}!")
+            print(f"\n✓ Bem-vindo, {username}!")
             time.sleep(1)
             return user
         else:
-            print("\nUsuário ou senha inválidos!")
+            print("\n✗ Usuário ou senha inválidos!")
             time.sleep(1)
             
-            retry = input("Tentar novamente? (S/N): ").upper()
+            retry = input("\nTentar novamente? (S/N): ").upper()
             if retry != 'S':
                 print("Saindo...")
                 sys.exit()
@@ -167,6 +189,7 @@ def menu_financeiro():
         print("="*40)
         print("1. Gerenciar Despesas Fixas")
         print("2. Ver Relatório Financeiro")
+        print("3. Calcular Custos de Água e Luz")
         print("0. Voltar")
         print("="*40)
         
@@ -198,44 +221,84 @@ def menu_financeiro():
             print(f"Custo Unitário: R$ {custo_unitario:.2f}")
             print(f"Preço de Venda Sugerido: R$ {preco_venda:.2f}")
             pause()
+        elif opcao == '3':
+            # Nova opção: Calcular custos de água e luz baseado em horas trabalhadas
+            funcionarios = data_manager.load_data('funcionarios.json')
+            
+            if not funcionarios:
+                print("\n⚠ ATENÇÃO: Nenhum funcionário cadastrado!")
+                print("Cadastre funcionários no módulo RH primeiro.")
+                pause()
+                continue
+            
+            # Gerar relatório da fábrica com as novas regras (30 dias, 24h/dia)
+            financeiro.gerar_relatorio_fabrica()
+            pause()
         elif opcao == '0':
             break
         else:
             print("Opção inválida!")
             time.sleep(1)
 
+
 def menu_rh():
+    """Menu do módulo de Recursos Humanos"""
     while True:
         clear_screen()
         print("="*40)
         print("   MÓDULO DE RH")
         print("="*40)
         print("1. Cadastrar Funcionário")
-        print("2. Ver Folha de Pagamento")
+        print("2. Listar Funcionários")
+        print("3. Editar Funcionário")
+        print("4. Deletar Funcionário")
+        print("5. Gerar Folha de Pagamento")
         print("0. Voltar")
         print("="*40)
         
         opcao = input("Escolha uma opção: ")
         
         if opcao == '1':
-            print("\n--- Cadastro de Funcionário ---")
+            # Cadastrar funcionário (usa seleção interativa de setor/cargo)
             try:
-                nome = input("Nome: ")
-                cpf = input("CPF: ")
-                rg = input("RG: ")
-                endereco = input("Endereço: ")
-                telefone = input("Telefone: ")
-                qtd_filhos = int(input("Qtd. Filhos: "))
-                cargo = input("Cargo: ")
-                valor_hora = float(input("Valor Hora: R$ "))
+                rh.cadastrar_funcionario()
+                pause()
+            except Exception as e:
+                print(f"Erro ao cadastrar: {e}")
+                pause()
                 
-                rh.cadastrar_funcionario(nome, cpf, rg, endereco, telefone, qtd_filhos, cargo, valor_hora)
-            except ValueError:
-                print("Erro: Valores inválidos!")
-            pause()
         elif opcao == '2':
-            rh.gerar_folha_pagamento()
+            # Listar todos os funcionários
+            rh.listar_funcionarios()
             pause()
+            
+        elif opcao == '3':
+            # Editar funcionário existente
+            try:
+                rh.editar_funcionarios()
+                pause()
+            except Exception as e:
+                print(f"Erro ao editar: {e}")
+                pause()
+                
+        elif opcao == '4':
+            # Deletar funcionário
+            try:
+                rh.deletar_funcionarios()
+                pause()
+            except Exception as e:
+                print(f"Erro ao deletar: {e}")
+                pause()
+                
+        elif opcao == '5':
+            # Gerar folha de pagamento
+            try:
+                rh.gerar_folha_pagamento()
+                pause()
+            except Exception as e:
+                print(f"Erro ao gerar folha: {e}")
+                pause()
+                
         elif opcao == '0':
             break
         else:
