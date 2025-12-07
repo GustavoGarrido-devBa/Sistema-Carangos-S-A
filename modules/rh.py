@@ -1,4 +1,6 @@
 # Nome: Gustavo dos Santos Garrido
+# Módulo: Recursos Humanos
+# Descrição: Gerencia cadastro de funcionários e folha de pagamento.
 
 import json
 import datetime
@@ -148,7 +150,7 @@ def cadastrar_funcionario(filepath: str = "data/funcionarios.json"):
     qtd_filhos = input("Quantidade de filhos do funcionário: ")
 
     # Seleciona setor e função automaticamente
-    nome_setor, cargos_setor = selecionar_setor()
+    _, cargos_setor = selecionar_setor()
     cargo, valor_hora = selecionar_cargo(cargos_setor)
     print(f"Função selecionada: {cargo} — R$ {valor_hora:.2f}")
 
@@ -311,3 +313,82 @@ def deletar_funcionarios(filepath: str = "data/funcionarios.json"):
         salvar_funcionario(cadastro, filepath) 
     else:
         print("Operação cancelada. O cadastro não foi deletado.")
+        
+def calcular_salario_bruto(horas_trabalhadas, valor_hora):
+    """
+    Calcula salário bruto base.
+    """
+    return horas_trabalhadas * valor_hora
+
+def calcular_horas_extras(horas_extras, valor_hora, cargo):
+    """
+    Calcula valor das horas extras.
+    Gerentes e Diretores não recebem hora extra.
+    """
+    cargos_sem_extra = ["gerente", "diretor"]
+    if cargo.lower() in cargos_sem_extra:
+        return 0.0
+    
+    # Adicional de 50% na hora extra (padrão CLT simples para o exercício)
+    valor_extra = horas_extras * (valor_hora * 1.5)
+    return valor_extra
+
+def calcular_irpf(salario_base):
+    """
+    Calcula o IRPF com base em tabela simplificada (exemplo 2024).
+    """
+    # Tabela progressiva simplificada (valores aproximados para exercício)
+    if salario_base <= 2259.20:
+        return 0.0
+    elif salario_base <= 2826.65:
+        return (salario_base * 0.075) - 169.44
+    elif salario_base <= 3751.05:
+        return (salario_base * 0.15) - 381.44
+    elif salario_base <= 4664.68:
+        return (salario_base * 0.225) - 662.77
+    else:
+        return (salario_base * 0.275) - 896.00
+
+def calcular_liquido(salario_bruto, irpf):
+    """
+    Calcula salário líquido (Bruto - IRPF).
+    Ignorando INSS para simplificação conforme enunciado foca em IRPF e faixas de desconto.
+    """
+    return salario_bruto - irpf
+
+def gerar_folha_pagamento():
+    """
+    Gera relatório final com salários líquidos e IRPF.
+    """
+    print("\n--- Folha de Pagamento ---")
+    
+    # Carregar funcionários cadastrados
+    funcionarios = carregar_todos_funcionarios()
+    
+    if not funcionarios:
+        print("Nenhum funcionário cadastrado para gerar folha.")
+        return
+    
+    # Ordenar por nome
+    funcionarios_ordenados = sorted(funcionarios, key=lambda x: x["nome"])
+    
+    for f in funcionarios_ordenados:
+        # Simulação de horas para o relatório (em um sistema real, viria de input ou ponto)
+        horas_trab = 220 # Mensal padrão
+        horas_ext = float(input("Informe a quantidade de horas extras: "))  # Exemplo
+        
+        bruto = calcular_salario_bruto(horas_trab, f["valor_hora"])
+        extra = calcular_horas_extras(horas_ext, f["valor_hora"], f["cargo"])
+        total_bruto = bruto + extra
+        
+        irpf = calcular_irpf(total_bruto)
+        liquido = calcular_liquido(total_bruto, irpf)
+        
+        paga_ir = "Sim" if irpf > 0 else "Não"
+        
+        print(f"Nome: {f['nome']}")
+        print(f"  Cargo: {f['cargo']}")
+        print(f"  Salário Bruto: R$ {total_bruto:.2f}")
+        print(f"  IRPF: R$ {irpf:.2f} ({paga_ir})")
+        print(f"  Salário Líquido: R$ {liquido:.2f}")
+        print("-" * 30)
