@@ -374,7 +374,7 @@ def gerar_folha_pagamento():
     
     for f in funcionarios_ordenados:
         # Simulação de horas para o relatório (em um sistema real, viria de input ou ponto)
-        horas_trab = 220 # Mensal padrão
+        horas_trab = float(input("Informe a quantidade de horas trabalhadas (media - 220h mensais): ")) # Mensal padrão
         horas_ext = float(input("Informe a quantidade de horas extras: "))  # Exemplo
         
         bruto = calcular_salario_bruto(horas_trab, f["valor_hora"])
