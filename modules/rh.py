@@ -237,3 +237,127 @@ def selecionar_cargo(cargos_setor: dict):
         except ValueError:
 
             print("Entrada inválida. Digite um número.")
+            
+def cadastrar_funcionario():
+
+    """
+
+    Cadastra um funcionário interativamente e retorna um dicionário com os dados.
+
+    """
+
+    nome = input("Nome do funcionário: ")
+
+    cpf = input("CPF do funcionário: ")
+
+    rg = input("RG do funcionário: ")
+
+    endereco = input("Endereço do funcionário: ")
+
+    telefone = input("Telefone do funcionário: ")
+
+    qtd_filhos = input("Quantidade de filhos do funcionário: ")
+
+    # Seleciona setor e função automaticamente
+
+    nome_setor, cargos_setor = selecionar_setor()
+
+    cargo, valor_hora = selecionar_cargo(cargos_setor)
+
+    print(f"Função selecionada: {cargo} — R$ {valor_hora:.2f}")
+
+    # normaliza tipos
+
+    try:
+
+        qtd_filhos = int(qtd_filhos)
+
+    except Exception:
+
+        qtd_filhos = 0
+
+
+
+    try:
+
+        valor_hora = float(valor_hora)
+
+    except Exception:
+
+        # fallback: se por algum motivo não for possível converter, usa 0.0
+
+        valor_hora = 0.0
+
+
+
+    funcionarios = {
+
+        "nome": nome,
+
+        "cpf": cpf,
+
+        "rg": rg,
+
+        "endereco": endereco,
+
+        "telefone": telefone,
+
+        "qtd_filhos": qtd_filhos,
+
+        "cargo": cargo,
+
+        "valor_hora": valor_hora,
+
+        "data_cadastro": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    }
+
+   
+
+    # salva em JSON
+
+    try:
+
+        salvar_funcionario(funcionarios)
+
+    except Exception:
+
+        # não falhar o fluxo caso o salvamento dê problema; apenas segue retornando
+
+        pass
+
+
+
+    return funcionarios
+
+def carregar_todos_funcionarios(filepath: str = "data/funcionarios.json") -> list:
+
+    """
+
+    Carrega todos os registros do arquivo JSON. Retorna uma lista vazia se não encontrar ou houver erro.
+
+    """
+
+    if not os.path.exists(filepath):
+
+        return []
+
+    try:
+
+        with open(filepath, "r", encoding="utf-8") as f:
+
+            data = json.load(f)
+
+            if isinstance(data, list):
+
+                return data
+
+            else:
+
+                return []
+
+    except Exception as e:
+
+        print("Er ao carregar os dados do arquivo: {e}")
+
+        return []
