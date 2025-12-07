@@ -1,18 +1,18 @@
 [
     {
         "tipo": "Agua",
-        "valor": 45.0
+        "valor": 0.0
     },
     {
         "tipo": "Luz",
-        "valor": 300.0
+        "valor": 0.0
     },
     {
         "tipo": "Salarios",
-        "valor": 100000.0
+        "valor": 0.0
     },
     {
         "tipo": "Impostos",
-        "valor": 10000.0
+        "valor": 0.0
     }
 ]

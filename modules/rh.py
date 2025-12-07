@@ -5,7 +5,7 @@ import datetime
 import os
 
 
-def salvar_funcionario(funcionario: dict, filepath: str = "data/funcionarios.json"):
+def salvar_funcionario(dados_a_salvar: list, filepath: str = "data/funcionarios.json"):
     """
     Salva (anexa) um funcionário no arquivo JSON especificado.
     Se o arquivo não existir, cria uma lista nova.
@@ -15,27 +15,29 @@ def salvar_funcionario(funcionario: dict, filepath: str = "data/funcionarios.jso
     if dirpath and not os.path.exists(dirpath):
         os.makedirs(dirpath, exist_ok=True)
 
-    # lê lista existente (ou inicia vazia)
-    data = []
-    if os.path.exists(filepath):
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if not isinstance(data, list):
-                    data = []
-        except Exception:
-            data = []
-    data.append(funcionario)
-
-    # grava de volta
     with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(dados_a_salvar, f, ensure_ascii=False, indent=2)
+        
+def carregar_todos_funcionarios(filepath: str = "data/funcionarios.json") -> list:
+    """
+    Carrega todos os registros do arquivo JSON. Retorna uma lista vazia se não encontrar ou houver erro.
+    """
+    if not os.path.exists(filepath):
+        return []
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+            else:
+                return []
+    except Exception as e:
+        print(f"Erro ao carregar os dados do arquivo: {e}")
+        return []
 
 
+# Aqui estão os setores e seus respectivos cargos com valores por hora (valores base).
 SETORES_DA_EMPRESA = {
-    """
-    Aqui estão os setores e seus respectivos cargos com valores por hora, será como os valores base.
-    """
     "OPERACIONAL": {
         "Auxiliar de Produção": 6.90,
         "Operador de Máquinas": 8.50,
@@ -133,8 +135,7 @@ def selecionar_cargo(cargos_setor: dict):
             print("Entrada inválida. Digite um número.")
             
             
-def cadastrar_funcionario():
-
+def cadastrar_funcionario(filepath: str = "data/funcionarios.json"):
     """
     Cadastra um funcionário interativamente e retorna um dicionário com os dados.
     """
@@ -165,7 +166,7 @@ def cadastrar_funcionario():
         # fallback: se por algum motivo não for possível converter, usa 0.0
         valor_hora = 0.0
 
-    funcionarios = {
+    novo_funcionario = {
 
         "nome": nome,
         "cpf": cpf,
@@ -178,45 +179,32 @@ def cadastrar_funcionario():
         "data_cadastro": datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     }
 
-    # salva em JSON
+    cadastro_completo = carregar_todos_funcionarios(filepath)
+    cadastro_completo.append(novo_funcionario)
 
     try:
-        salvar_funcionario(funcionarios)
-
-    except Exception:
-        # não falhar o fluxo caso o salvamento dê problema; apenas segue retornando
-        pass
-
-    return funcionarios
-
-
-def carregar_todos_funcionarios(filepath: str = "data/funcionarios.json") -> list:
-    """
-    Carrega todos os registros do arquivo JSON. Retorna uma lista vazia se não encontrar ou houver erro.
-    """
-    if not os.path.exists(filepath):
-        return []
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                return data
-            else:
-                return []
+        salvar_funcionario(cadastro_completo, filepath)
+        print(f"\n✨ Funcionário '{nome}' cadastrado com sucesso!")
     except Exception as e:
-        print("Erro ao carregar os dados do arquivo: {e}")
-        return []
+        print(f"Erro ao salvar o cadastro: {e}")
+        pass 
+
+    return novo_funcionario
     
     
 def listar_funcionarios():
     """
     Lista todos os funcionários cadastrados no sistema.
     """
+    
     cadastrados = carregar_todos_funcionarios()
+    
     if not cadastrados:
         print("Nenhum funcionário cadastrado.")
         return
+    
     print(">>> === Lista dos funcionarios === <<<")
+    
     for indice, funcionario in enumerate(cadastrados, start=1):
 
         nome = funcionario.get('nome', 'NOME INDISPONÍVEL')
@@ -277,8 +265,49 @@ def editar_funcionarios(filepath: str = "data/funcionarios.json"):
     print("\nPara alterar o cargo ou setor, é necessário apagar o cadastro atual e refazer o cadastro com as novas informações.")
 
     try:
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(cadastro, f, ensure_ascii=False, indent=2)
+        salvar_funcionario(cadastro, filepath)
         print(f"\nDados de '{editar['nome']}' atualizados com sucesso!")
     except Exception as e:
         print(f"Erro ao salvar as alterações: {e}")
+              
+def deletar_funcionarios(filepath: str = "data/funcionarios.json"):
+    """
+    Permite ao usuário selecionar um funcionário da lista (pelo índice) e removê-lo permanentemente do cadastro.
+    """
+    
+    print("\n>>> === Deletar Funcionário Cadastrado === <<<")
+    
+    
+    cadastro = carregar_todos_funcionarios(filepath)
+    
+    if not cadastro:
+        print("Cadastro vazio. Nada para deletar.")
+        return
+
+    listar_funcionarios()
+    
+    while True:
+        try:
+            escolha_indice = input("Digite o NÚMERO do funcionário que deseja DELETAR: ")
+            indice_selecionado = int(escolha_indice) - 1
+
+            if 0 <= indice_selecionado < len(cadastro):
+                break
+            else:
+                print("Número fora do intervalo da lista.")
+        except ValueError:
+            print("Entrada inválida. Digite um número inteiro.")
+            
+    remover = cadastro[indice_selecionado]
+    nome = remover.get('nome', 'Funcionário Desconhecido')
+    
+    confirmacao = input(f"❗ TEM CERTEZA que deseja DELETAR **{nome}**? (s/n): ").lower()
+    
+    if confirmacao == 's':
+        cadastro.pop(indice_selecionado)
+        
+        print(f"Funcionário **{nome}** removido do cadastro.")
+        
+        salvar_funcionario(cadastro, filepath) 
+    else:
+        print("Operação cancelada. O cadastro não foi deletado.")
